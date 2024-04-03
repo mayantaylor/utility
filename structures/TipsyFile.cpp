@@ -569,9 +569,17 @@ bool TipsyFile::loadfile() {
 	return true;
 }
 
-PartialTipsyFile::PartialTipsyFile(const std::string& fn,
+	PartialTipsyFile::PartialTipsyFile(const std::string &fn,
+									   const unsigned int begin,
+									   const unsigned int end) : myReader(fn)
+	{
+		loadPartial(begin, end);
+	}
+
+	PartialTipsyFile::PartialTipsyFile(Ck::IO::Session session,
 				   const unsigned int begin,
-				   const unsigned int end) : myReader(fn) {
+									   const unsigned int end) : myReader(session)
+	{
 	loadPartial(begin, end);
 }
 
