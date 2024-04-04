@@ -17,6 +17,9 @@
 #include "xdr_template.h"
 #include "assert.h"
 
+#include "ckio.h"
+#include "AbstractReader.h"
+
 namespace Tipsy
 {
 
@@ -104,8 +107,7 @@ namespace Tipsy
 		}
 
 	public:
-		std::istream *tipsyStream;
-		Ck::IO::FileReader *fileReader;
+		AbstractReader *abstractReader;
 
 		bool loadHeader();
 
@@ -113,10 +115,11 @@ namespace Tipsy
 		// copy constructor and equals operator are private to prevent their use (use takeOverStream instead)
 		TipsyReader(const TipsyReader &r);
 		TipsyReader &operator=(const TipsyReader &r);
+		Ck::IO::Session _session;
 
 	public:
 		TipsyReader() : native(true), ok(false), responsible(false),
-						tipsyStream(0), bDoublePos(false), bDoubleVel(false)
+						abstractReader(0), bDoublePos(false), bDoubleVel(false)
 		{
 			set_sizes();
 		}
@@ -124,8 +127,9 @@ namespace Tipsy
 		/// Load from a file
 		TipsyReader(const std::string &filename, bool _bDP = false, bool _bDV = false) : ok(false), responsible(true), bDoublePos(_bDP), bDoubleVel(_bDV)
 		{
-			tipsyStream = new std::ifstream(filename.c_str(), std::ios::in | std::ios::binary);
-			if (!(*tipsyStream))
+			std::ifstream *ifstream = new std::ifstream(filename.c_str(), std::ios::in | std::ios::binary);
+			abstractReader = new StreamWrapper(ifstream);
+			if (!(*abstractReader))
 				throw std::ios_base::failure("Bad file open");
 			loadHeader();
 		}
@@ -137,21 +141,25 @@ namespace Tipsy
 		 */
 		TipsyReader(std::istream &is, bool _bDP = false, bool _bDV = false) : ok(false), responsible(true), bDoublePos(_bDP), bDoubleVel(_bDV)
 		{
-			tipsyStream = new std::istream(is.rdbuf());
+			abstractReader = new StreamWrapper(new std::istream(is.rdbuf()));
 			loadHeader();
 		}
 
 		/** Read from a CkIO session.
 		 *
 		 */
-		TipsyReader(Ck::IO::Session session, bool _bDP = false, bool _bDV = false)
+		TipsyReader(Ck::IO::Session session, bool _bDP = false, bool _bDV = false) : ok(false), responsible(true), bDoublePos(_bDP), bDoubleVel(_bDV)
 		{
 			// create file reader object
-			fileReader = Ck::IO::FileReader(session);
+			CkPrintf("Creating fileReader obj\n");
+			Ck::IO::FileReader *fr = new Ck::IO::FileReader(session);
+			abstractReader = new CkIOReader(fr);
+			_session = session;
+
+			CkPrintf("Filereader obj created, calling loadHeader()\n");
 			loadHeader();
 		}
 
-		/// Use this instead of a copy constructor
 		void takeOverStream(TipsyReader &r)
 		{
 			native = r.native;
@@ -161,10 +169,10 @@ namespace Tipsy
 			numStarsRead = r.numStarsRead;
 			h = r.h;
 			if (responsible)
-				delete tipsyStream;
+				delete abstractReader;
 			responsible = true;
 			r.responsible = false;
-			tipsyStream = r.tipsyStream;
+			abstractReader = r.abstractReader;
 			bDoublePos = r.bDoublePos;
 			bDoubleVel = r.bDoubleVel;
 			set_sizes();
@@ -175,8 +183,12 @@ namespace Tipsy
 		bool reload(const std::string &filename)
 		{
 			if (responsible)
-				delete tipsyStream;
-			tipsyStream = new std::ifstream(filename.c_str(), std::ios::in | std::ios::binary);
+			{
+				delete abstractReader;
+			}
+
+			abstractReader = new StreamWrapper(new std::ifstream(filename.c_str(), std::ios::in | std::ios::binary));
+
 			responsible = true;
 			return loadHeader();
 		}
@@ -188,9 +200,15 @@ namespace Tipsy
 		 */
 		bool reload(std::istream &is)
 		{
+			// TODO: fix implementation
 			if (responsible)
-				delete tipsyStream;
-			tipsyStream = new std::istream(is.rdbuf());
+			{
+				delete abstractReader;
+			}
+
+			// tipsyStream = new std::istream(is.rdbuf());
+
+			// fileReader = new Ck::IO::FileReader(_session);
 			responsible = true;
 			return loadHeader();
 		}
@@ -198,7 +216,11 @@ namespace Tipsy
 		~TipsyReader()
 		{
 			if (responsible)
-				delete tipsyStream;
+			{
+				CkPrintf("Cleaning up fileReader and TipsyStream\n");
+				delete abstractReader;
+				// delete tipsyStream;
+			}
 		}
 
 		header getHeader()

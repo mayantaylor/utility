@@ -622,15 +622,14 @@ namespace Tipsy
 		loadPartial(begin, end);
 	}
 
-	PartialTipsyFile::PartialTipsyFile(Ck::IO::Session session,
-									   const unsigned int begin,
-									   const unsigned int end) : myReader(session)
+	PartialTipsyFile::PartialTipsyFile(std::istream &is, const unsigned int begin,
+									   const unsigned int end) : myReader(is)
 	{
 		loadPartial(begin, end);
 	}
 
-	PartialTipsyFile::PartialTipsyFile(std::istream &is, const unsigned int begin,
-									   const unsigned int end) : myReader(is)
+	PartialTipsyFile::PartialTipsyFile(Ck::IO::Session &session, const unsigned int begin,
+									   const unsigned int end) : myReader(session)
 	{
 		loadPartial(begin, end);
 	}

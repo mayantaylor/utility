@@ -48,15 +48,15 @@ namespace Tipsy
 	{
 		ok = false;
 
-		if (!(*tipsyStream))
+		if (!(*abstractReader))
 		{
 			throw std::ios_base::failure("Bad file open");
 			return false;
 		}
 
 		// read the header in
-		tipsyStream->read(reinterpret_cast<char *>(&h), sizeof(h));
-		if (!*tipsyStream)
+		abstractReader->read(reinterpret_cast<char *>(&h), sizeof(h));
+		if (!*abstractReader)
 			return false;
 
 		if (h.ndim != MAXDIM)
@@ -81,21 +81,21 @@ namespace Tipsy
 				int pad = 0;
 				assert(sizeof(h) == 28); // Assume that native format
 										 // is unpadded.
-				tipsyStream->read(reinterpret_cast<char *>(&pad), 4);
+				abstractReader->read(reinterpret_cast<char *>(&pad), 4);
 			}
 
-			if (!*tipsyStream)
+			if (!*abstractReader)
 				return false;
 		}
 		else
 			native = true;
 
 		// determine double/single from size of file.
-		std::streampos current = tipsyStream->tellg();
-		tipsyStream->seekg(0, tipsyStream->end);
+		size_t current = abstractReader->tellg();
+		abstractReader->seekg(0, abstractReader->end);
 		// file size without header
-		uint64_t fsize = tipsyStream->tellg() - current;
-		tipsyStream->seekg(current, tipsyStream->beg);
+		uint64_t fsize = abstractReader->tellg() - current;
+		abstractReader->seekg(current, abstractReader->beg);
 		if (fsize == (((uint64_t)h.nsph) * gas_particle_t<float, float>::sizeBytes +
 					  ((uint64_t)h.ndark) * dark_particle_t<float, float>::sizeBytes +
 					  ((uint64_t)h.nstar) * star_particle_t<float, float>::sizeBytes))
@@ -143,8 +143,8 @@ namespace Tipsy
 		{
 			++numGasRead;
 			gas_particle gp;
-			tipsyStream->read(reinterpret_cast<char *>(&gp), gas_particle::sizeBytes);
-			if (!(*tipsyStream))
+			abstractReader->read(reinterpret_cast<char *>(&gp), gas_particle::sizeBytes);
+			if (!(*abstractReader))
 				return false;
 			p = gp;
 		}
@@ -152,8 +152,8 @@ namespace Tipsy
 		{
 			++numDarksRead;
 			dark_particle dp;
-			tipsyStream->read(reinterpret_cast<char *>(&dp), dark_particle::sizeBytes);
-			if (!(*tipsyStream))
+			abstractReader->read(reinterpret_cast<char *>(&dp), dark_particle::sizeBytes);
+			if (!(*abstractReader))
 				return false;
 			p = dp;
 		}
@@ -161,8 +161,8 @@ namespace Tipsy
 		{
 			++numStarsRead;
 			star_particle sp;
-			tipsyStream->read(reinterpret_cast<char *>(&sp), star_particle::sizeBytes);
-			if (!(*tipsyStream))
+			abstractReader->read(reinterpret_cast<char *>(&sp), star_particle::sizeBytes);
+			if (!(*abstractReader))
 				return false;
 			p = sp;
 		}
@@ -187,7 +187,7 @@ namespace Tipsy
 	template <typename TPos, typename TVel>
 	bool TipsyReader::getNextGasParticle_t(gas_particle_t<TPos, TVel> &p)
 	{
-		if (!ok || !(*tipsyStream))
+		if (!ok || !(*abstractReader))
 			return false;
 		assert(p.sizeBytes == gas_size);
 
@@ -196,26 +196,26 @@ namespace Tipsy
 			++numGasRead;
 			if (native)
 			{
-				tipsyStream->read((char *)&p.mass, sizeof(Real));
-				tipsyStream->read((char *)&p.pos, 3 * sizeof(TPos));
-				tipsyStream->read((char *)&p.vel, 3 * sizeof(TVel));
-				tipsyStream->read((char *)&p.rho, sizeof(Real));
-				tipsyStream->read((char *)&p.temp, sizeof(Real));
-				tipsyStream->read((char *)&p.hsmooth, sizeof(Real));
-				tipsyStream->read((char *)&p.metals, sizeof(Real));
-				tipsyStream->read((char *)&p.phi, sizeof(Real));
+				abstractReader->read((char *)&p.mass, sizeof(Real));
+				abstractReader->read((char *)&p.pos, 3 * sizeof(TPos));
+				abstractReader->read((char *)&p.vel, 3 * sizeof(TVel));
+				abstractReader->read((char *)&p.rho, sizeof(Real));
+				abstractReader->read((char *)&p.temp, sizeof(Real));
+				abstractReader->read((char *)&p.hsmooth, sizeof(Real));
+				abstractReader->read((char *)&p.metals, sizeof(Real));
+				abstractReader->read((char *)&p.phi, sizeof(Real));
 			}
 			else
 			{
 				XDR xdrs;
 				char buf[p.sizeBytes];
-				tipsyStream->read(buf, p.sizeBytes);
+				abstractReader->read(buf, p.sizeBytes);
 				xdrmem_create(&xdrs, buf, p.sizeBytes, XDR_DECODE);
 				if (!xdr_template(&xdrs, &p))
 					return false;
 				xdr_destroy(&xdrs);
 			}
-			if (numGasRead < h.nsph && !(*tipsyStream))
+			if (numGasRead < h.nsph && !(*abstractReader))
 				return false;
 		}
 		else
@@ -234,7 +234,7 @@ namespace Tipsy
 	template <typename TPos, typename TVel>
 	bool TipsyReader::getNextDarkParticle_t(dark_particle_t<TPos, TVel> &p)
 	{
-		if (!ok || !(*tipsyStream))
+		if (!ok || !(*abstractReader))
 			return false;
 		assert(p.sizeBytes == dark_size);
 
@@ -250,24 +250,24 @@ namespace Tipsy
 			++numDarksRead;
 			if (native)
 			{
-				tipsyStream->read((char *)&p.mass, sizeof(Real));
-				tipsyStream->read((char *)&p.pos, 3 * sizeof(TPos));
-				tipsyStream->read((char *)&p.vel, 3 * sizeof(TVel));
-				tipsyStream->read((char *)&p.eps, sizeof(Real));
-				tipsyStream->read((char *)&p.phi, sizeof(Real));
+				abstractReader->read((char *)&p.mass, sizeof(Real));
+				abstractReader->read((char *)&p.pos, 3 * sizeof(TPos));
+				abstractReader->read((char *)&p.vel, 3 * sizeof(TVel));
+				abstractReader->read((char *)&p.eps, sizeof(Real));
+				abstractReader->read((char *)&p.phi, sizeof(Real));
 			}
 			else
 			{
 				XDR xdrs;
 				char buf[p.sizeBytes];
-				tipsyStream->read(buf, p.sizeBytes);
+				abstractReader->read(buf, p.sizeBytes);
 				xdrmem_create(&xdrs, buf, p.sizeBytes, XDR_DECODE);
 				if (!xdr_template(&xdrs, &p))
 					return false;
 				xdr_destroy(&xdrs);
 			}
 			// Hack to fix end of stream problem on Macs --trq
-			if (numDarksRead < h.ndark && !(*tipsyStream))
+			if (numDarksRead < h.ndark && !(*abstractReader))
 				return false;
 		}
 		else
@@ -286,7 +286,7 @@ namespace Tipsy
 	template <typename TPos, typename TVel>
 	bool TipsyReader::getNextStarParticle_t(star_particle_t<TPos, TVel> &p)
 	{
-		if (!ok || !(*tipsyStream))
+		if (!ok || !(*abstractReader))
 			return false;
 		assert(p.sizeBytes == star_size);
 
@@ -303,26 +303,26 @@ namespace Tipsy
 			++numStarsRead;
 			if (native)
 			{
-				tipsyStream->read((char *)&p.mass, sizeof(Real));
-				tipsyStream->read((char *)&p.pos, 3 * sizeof(TPos));
-				tipsyStream->read((char *)&p.vel, 3 * sizeof(TVel));
-				tipsyStream->read((char *)&p.metals, sizeof(Real));
-				tipsyStream->read((char *)&p.tform, sizeof(Real));
-				tipsyStream->read((char *)&p.eps, sizeof(Real));
-				tipsyStream->read((char *)&p.phi, sizeof(Real));
+				abstractReader->read((char *)&p.mass, sizeof(Real));
+				abstractReader->read((char *)&p.pos, 3 * sizeof(TPos));
+				abstractReader->read((char *)&p.vel, 3 * sizeof(TVel));
+				abstractReader->read((char *)&p.metals, sizeof(Real));
+				abstractReader->read((char *)&p.tform, sizeof(Real));
+				abstractReader->read((char *)&p.eps, sizeof(Real));
+				abstractReader->read((char *)&p.phi, sizeof(Real));
 			}
 			else
 			{
 				XDR xdrs;
 				char buf[p.sizeBytes];
-				tipsyStream->read(buf, p.sizeBytes);
+				abstractReader->read(buf, p.sizeBytes);
 				xdrmem_create(&xdrs, buf, p.sizeBytes, XDR_DECODE);
 				if (!xdr_template(&xdrs, &p))
 					return false;
 				xdr_destroy(&xdrs);
 			}
 			// Hack to fix end of stream problem on Macs --trq
-			if (numStarsRead < h.nstar && !(*tipsyStream))
+			if (numStarsRead < h.nstar && !(*abstractReader))
 				return false;
 		}
 		else
@@ -340,7 +340,7 @@ namespace Tipsy
 	 */
 	bool TipsyReader::readAllParticles(gas_particle *gas, dark_particle *darks, star_particle *stars)
 	{
-		if (!ok || !(*tipsyStream))
+		if (!ok || !(*abstractReader))
 			return false;
 
 		// go back to the beginning of the file
@@ -374,7 +374,7 @@ namespace Tipsy
 	 */
 	bool TipsyReader::readAllParticles(std::vector<gas_particle> &gas, std::vector<dark_particle> &darks, std::vector<star_particle> &stars)
 	{
-		if (!ok || !(*tipsyStream))
+		if (!ok || !(*abstractReader))
 			return false;
 
 		// go back to the beginning of the file
@@ -419,8 +419,8 @@ namespace Tipsy
 		if (num < h.nsph)
 		{
 			seek_position = preface + num * gas_size;
-			tipsyStream->seekg(seek_position);
-			if (!(*tipsyStream))
+			abstractReader->seekg(seek_position);
+			if (!(*abstractReader))
 				return false;
 			numGasRead = num;
 			numDarksRead = 0;
@@ -429,8 +429,8 @@ namespace Tipsy
 		else if (num < (h.nsph + h.ndark))
 		{
 			seek_position = preface + h.nsph * gas_size + (num - h.nsph) * dark_size;
-			tipsyStream->seekg(seek_position);
-			if (!(*tipsyStream))
+			abstractReader->seekg(seek_position);
+			if (!(*abstractReader))
 				return false;
 			numGasRead = h.nsph;
 			numDarksRead = num - h.nsph;
@@ -439,8 +439,8 @@ namespace Tipsy
 		else if (num < (h.nsph + h.ndark + h.nstar))
 		{
 			seek_position = preface + h.nsph * gas_size + h.ndark * dark_size + (num - h.ndark - h.nsph) * star_size;
-			tipsyStream->seekg(seek_position);
-			if (!(*tipsyStream))
+			abstractReader->seekg(seek_position);
+			if (!(*abstractReader))
 				return false;
 			numGasRead = h.nsph;
 			numDarksRead = h.ndark;
@@ -460,24 +460,24 @@ namespace Tipsy
 			{
 				++numGasRead;
 				gas_particle_t<double, double> gp;
-				tipsyStream->read(reinterpret_cast<char *>(&gp), gas_size);
-				if (!(*tipsyStream))
+				abstractReader->read(reinterpret_cast<char *>(&gp), gas_size);
+				if (!(*abstractReader))
 					return false;
 			}
 			else if (numDarksRead < h.ndark)
 			{
 				++numDarksRead;
 				dark_particle_t<double, double> dp;
-				tipsyStream->read(reinterpret_cast<char *>(&dp), dark_size);
-				if (!(*tipsyStream))
+				abstractReader->read(reinterpret_cast<char *>(&dp), dark_size);
+				if (!(*abstractReader))
 					return false;
 			}
 			else if (numStarsRead < h.nstar)
 			{
 				++numStarsRead;
 				star_particle_t<double, double> sp;
-				tipsyStream->read(reinterpret_cast<char *>(&sp), star_size);
-				if (!(*tipsyStream))
+				abstractReader->read(reinterpret_cast<char *>(&sp), star_size);
+				if (!(*abstractReader))
 					return false;
 			}
 			else

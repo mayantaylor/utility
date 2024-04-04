@@ -295,6 +295,8 @@ namespace Tipsy
 						 const unsigned int end = 1);
 		PartialTipsyFile(std::istream &is, const unsigned int begin = 0,
 						 const unsigned int end = 1);
+		PartialTipsyFile(Ck::IO::Session &session, const unsigned int begin = 0,
+						 const unsigned int end = 1);
 
 		// reloading a partial file from indices
 		bool reloadIndex(const std::string &fn, const unsigned int begin = 0,
